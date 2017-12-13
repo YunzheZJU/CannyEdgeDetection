@@ -1,7 +1,7 @@
 #include "head.h"
+#include <ctime>
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
     Mat src = imread("1.jpg");
     imshow("Original", src);
     Mat result = Candy(src);
@@ -10,33 +10,51 @@ int main() {
     return 0;
 }
 
-Mat Candy(Mat &frame) {
-    Mat result;
+Mat Candy(const Mat &frame) {
 //    Normalizing
+    Mat result;
     cvtColor(frame, result, CV_BGR2GRAY);
 //    Filtering
+    int time_0 = clock();
     GaussianBlur(result, result, Size(3, 3), 0, 0);
 //    imshow("After Gaussian Blur", result);
+    int time_1 = clock();
+    cout << "1. Filtering takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Enhancing
     Mat imageSobelY;
     Mat imageSobelX;
-    double *pointDirection = new double[(imageSobelX.cols - 1) * (imageSobelX.rows - 1)];  //定义梯度方向角数组
+    double *pointDirection;
+    pointDirection = new double[(imageSobelX.cols - 1) * (imageSobelX.rows - 1)];  //定义梯度方向角数组
     SobelGradDirction(result, imageSobelX, imageSobelY, pointDirection);  //计算X、Y方向梯度和方向角
-//    imshow("Sobel Y",imageSobelY);
-//    imshow("Sobel X",imageSobelX);
-//    Detecting
+
     Mat SobelGradAmpl;
     SobelAmplitude(imageSobelX, imageSobelY, SobelGradAmpl);   //计算X、Y方向梯度融合幅值
 //    imshow("Soble XYRange", SobelGradAmpl);
+    int time_2 = clock();
+    cout << "2. Enhancing takes " << time_2 - time_1 << " milliseconds." << endl;
+//    imshow("Sobel Y",imageSobelY);
+//    imshow("Sobel X",imageSobelX);
+//    Detecting
     Mat imageLocalMax;
     LocalMaxValue(SobelGradAmpl, imageLocalMax, pointDirection);  //局部非极大值抑制
 //    imshow("Non-Maximum Image",imageLocalMax);
+    int time_3 = clock();
+    cout << "3. LocalMaxValue takes " << time_3 - time_2 << " milliseconds." << endl;
+
     Mat cannyImage;
+    Mat lowThresImage;
+    Mat highThresImage;
     cannyImage = Mat::zeros(imageLocalMax.size(), CV_8UC1);
-    DoubleThreshold(imageLocalMax, 90, 160);        //双阈值处理
+    DoubleThreshold(imageLocalMax, lowThresImage, highThresImage, 90, 160);        //双阈值处理
 //    imshow("Double Threshold Image",imageLocalMax);
+    imshow("Low Threshold Image",lowThresImage);
+    imshow("High Threshold Image",highThresImage);
+    int time_4 = clock();
+    cout << "4. DoubleThreshold takes " << time_4 - time_3 << " milliseconds." << endl;
+
     DoubleThresholdLink(imageLocalMax, 90, 160);   //双阈值中间阈值滤除及连接
-//    imshow("Canny Image",imageLocalMax);
+    int time_5 = clock();
+    cout << "5. DoubleThresholdLink takes " << time_5 - time_4 << " milliseconds." << endl;
 //    Done
     return imageLocalMax;
 }
@@ -154,14 +172,22 @@ void LocalMaxValue(const Mat imageInput, Mat &imageOutput, double *pointDirectio
 //第二个参数lowThreshold是低阈值
 //第三个参数highThreshold是高阈值
 //******************************************************
-void DoubleThreshold(Mat &imageIput, double lowThreshold, double highThreshold) {
-    for (int i = 0; i < imageIput.rows; i++) {
-        for (int j = 0; j < imageIput.cols; j++) {
-            if (imageIput.at<uchar>(i, j) > highThreshold) {
-                imageIput.at<uchar>(i, j) = 255;
+void DoubleThreshold(Mat &imageInput, Mat &lowOutput, Mat &highOutput, double lowThreshold, double highThreshold) {
+    lowOutput = imageInput.clone();
+    highOutput = imageInput.clone();
+    for (int i = 0; i < imageInput.rows; i++) {
+        for (int j = 0; j < imageInput.cols; j++) {
+            if (imageInput.at<uchar>(i, j) > highThreshold) {
+                imageInput.at<uchar>(i, j) = 255;
+                highOutput.at<uchar>(i, j) = 255;
+            } else {
+                highOutput.at<uchar>(i, j) = 0;
             }
-            if (imageIput.at<uchar>(i, j) < lowThreshold) {
-                imageIput.at<uchar>(i, j) = 0;
+            if (imageInput.at<uchar>(i, j) < lowThreshold) {
+                imageInput.at<uchar>(i, j) = 0;
+                lowOutput.at<uchar>(i, j) = 0;
+            } else {
+                lowOutput.at<uchar>(i, j) = 255;
             }
         }
     }
@@ -186,6 +212,25 @@ void DoubleThresholdLink(Mat &imageInput, double lowThreshold, double highThresh
                     DoubleThresholdLink(imageInput, lowThreshold, highThreshold); //递归调用
                 } else {
                     imageInput.at<uchar>(i, j) = 0;
+                }
+            }
+        }
+    }
+}
+
+void LinkEdge(Mat &imageOutput, Mat lowThresImage, Mat highThresImage) {
+    imageOutput = highThresImage.clone();
+    int rowCount = imageOutput.rows;
+    int columnCount = imageOutput.cols;
+    for (int i = 0; i < rowCount - 1; i++) {
+        uchar* pixelsThisRow = imageOutput.ptr<uchar>(i);
+        uchar* pixelsNextRow = imageOutput.ptr<uchar>(i + 1);
+        for (int j = 1; i < columnCount - 1; j++) {
+            if (pixelsThisRow[j] == 255) {
+                // 判断左下方、右方、下方和右下方是否接续
+                if (pixelsThisRow[j + 1] != 255 && pixelsNextRow[j + 1] != 255 && pixelsNextRow[j] != 255 && pixelsNextRow[j - 1] != 255) {
+                    // 若不接续，从低阈值图中查找8领域是否接续
+                    
                 }
             }
         }

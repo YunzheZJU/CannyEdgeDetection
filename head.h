@@ -9,8 +9,9 @@
 #include <opencv2/opencv.hpp>
 
 using namespace cv;
+using namespace std;
 
-Mat Candy(Mat &frame);
+Mat Candy(const Mat &frame);
 
 //******************Sobel算子计算X、Y方向梯度和梯度方向角********************
 //第一个参数imageSourc原始灰度图像；
@@ -39,7 +40,7 @@ void LocalMaxValue(Mat imageInput, Mat &imageOutput, double *pointDirection);
 //第二个参数lowThreshold是低阈值
 //第三个参数highThreshold是高阈值
 //******************************************************
-void DoubleThreshold(Mat &imageIput, double lowThreshold, double highThreshold);
+void DoubleThreshold(Mat &imageInput, Mat &lowOutput, Mat &highOutput, double lowThreshold, double highThreshold);
 
 //******************双阈值中间像素连接处理*********************
 //第一个参数imageInput输入和输出的的Sobel梯度幅值图像；
@@ -47,6 +48,5 @@ void DoubleThreshold(Mat &imageIput, double lowThreshold, double highThreshold);
 //第三个参数highThreshold是高阈值
 //*************************************************************
 void DoubleThresholdLink(Mat &imageInput, double lowThreshold, double highThreshold);
-
 
 #endif //OPENCV_A1_HEAD_H
