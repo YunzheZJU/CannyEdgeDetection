@@ -49,4 +49,8 @@ void DoubleThreshold(Mat &imageInput, Mat &lowOutput, Mat &highOutput, double lo
 //*************************************************************
 void DoubleThresholdLink(Mat &imageInput, double lowThreshold, double highThreshold);
 
+void LinkEdge(Mat &imageOutput, const Mat &lowThresImage, const Mat &highThresImage, int &count);
+
+void GoAhead(int i, int j, uchar* pixelsPreviousRow, uchar* pixelsThisRow, uchar* pixelsNextRow, const Mat &lowThresImage, Mat &imageOutput, int &count);
+
 #endif //OPENCV_A1_HEAD_H

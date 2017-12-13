@@ -2,7 +2,7 @@
 #include <ctime>
 
 int main() {
-    Mat src = imread("1.jpg");
+    Mat src = imread("2.jpg");
     imshow("Original", src);
     Mat result = Candy(src);
     imshow("My Candy Detection", result);
@@ -47,13 +47,16 @@ Mat Candy(const Mat &frame) {
     cannyImage = Mat::zeros(imageLocalMax.size(), CV_8UC1);
     DoubleThreshold(imageLocalMax, lowThresImage, highThresImage, 90, 160);        //双阈值处理
 //    imshow("Double Threshold Image",imageLocalMax);
-    imshow("Low Threshold Image",lowThresImage);
-    imshow("High Threshold Image",highThresImage);
+    imshow("Low Threshold Image", lowThresImage);
+    imshow("High Threshold Image", highThresImage);
     int time_4 = clock();
     cout << "4. DoubleThreshold takes " << time_4 - time_3 << " milliseconds." << endl;
 
-    DoubleThresholdLink(imageLocalMax, 90, 160);   //双阈值中间阈值滤除及连接
+//    DoubleThresholdLink(imageLocalMax, 90, 160);   //双阈值中间阈值滤除及连接
+    int count = 0;
+    LinkEdge(imageLocalMax, lowThresImage, highThresImage, count);
     int time_5 = clock();
+    cout << "Count: " << count << endl;
     cout << "5. DoubleThresholdLink takes " << time_5 - time_4 << " milliseconds." << endl;
 //    Done
     return imageLocalMax;
@@ -66,21 +69,24 @@ void SobelGradDirction(const Mat imageSource, Mat &imageSobelX, Mat &imageSobelY
     }
     imageSobelX = Mat::zeros(imageSource.size(), CV_32SC1);
     imageSobelY = Mat::zeros(imageSource.size(), CV_32SC1);
-    uchar *P = imageSource.data;
-    uchar *PX = imageSobelX.data;
-    uchar *PY = imageSobelY.data;
-
+//    uchar *P = imageSource.data;
+//    uchar *PX = imageSobelX.data;
+//    uchar *PY = imageSobelY.data;
+    
     int step = imageSource.step;
     int stepXY = imageSobelX.step;
     int k = 0;
     for (int i = 1; i < (imageSource.rows - 1); i++) {
+        const uchar *pixelsPreviousRow = imageSource.ptr<uchar>(i - 1);
+        const uchar *pixelsThisRow = imageSource.ptr<uchar>(i);
+        const uchar *pixelsNextRow = imageSource.ptr<uchar>(i + 1);
         for (int j = 1; j < (imageSource.cols - 1); j++) {
             //通过指针遍历图像上每一个像素
-            double gradY = P[(i - 1) * step + j + 1] + P[i * step + j + 1] * 2 + P[(i + 1) * step + j + 1] -
-                           P[(i - 1) * step + j - 1] - P[i * step + j - 1] * 2 - P[(i + 1) * step + j - 1];
+            double gradY = pixelsPreviousRow[j + 1] + pixelsThisRow[j + 1] * 2 + pixelsNextRow[j + 1] -
+                    pixelsPreviousRow[j - 1] - pixelsThisRow[j - 1] * 2 - pixelsNextRow[j - 1];
             PY[i * stepXY + j * (stepXY / step)] = static_cast<uchar>(abs(gradY));
-            double gradX = P[(i + 1) * step + j - 1] + P[(i + 1) * step + j] * 2 + P[(i + 1) * step + j + 1] -
-                           P[(i - 1) * step + j - 1] - P[(i - 1) * step + j] * 2 - P[(i - 1) * step + j + 1];
+            double gradX = pixelsNextRow[j - 1] + pixelsNextRow[j] * 2 + pixelsNextRow[j + 1] -
+                    pixelsPreviousRow[j - 1] - pixelsPreviousRow[j] * 2 - pixelsPreviousRow[j + 1];
             PX[i * stepXY + j * (stepXY / step)] = static_cast<uchar>(abs(gradX));
             if (gradX == 0) {
                 gradX = 0.00000000000000001;  //防止除数为0异常
@@ -99,13 +105,29 @@ void SobelGradDirction(const Mat imageSource, Mat &imageSobelX, Mat &imageSobelY
 //第二个参数imageGradY是Y方向梯度图像；
 //第三个参数SobelAmpXY是输出的X、Y方向梯度图像幅值
 //*************************************************************
+//void SobelAmplitude(const Mat imageGradX, const Mat &imageGradY, Mat &SobelAmpXY) {
+//    SobelAmpXY = Mat::zeros(imageGradX.size(), CV_32FC1);
+//    for (int i = 0; i < SobelAmpXY.rows; i++) {
+//        for (int j = 0; j < SobelAmpXY.cols; j++) {
+//            SobelAmpXY.at<float>(i, j) = static_cast<float>(sqrt(
+//                    imageGradX.at<uchar>(i, j) * imageGradX.at<uchar>(i, j) +
+//                    imageGradY.at<uchar>(i, j) * imageGradY.at<uchar>(i, j)));
+//        }
+//    }
+//    convertScaleAbs(SobelAmpXY, SobelAmpXY);
+//}
+
 void SobelAmplitude(const Mat imageGradX, const Mat &imageGradY, Mat &SobelAmpXY) {
     SobelAmpXY = Mat::zeros(imageGradX.size(), CV_32FC1);
     for (int i = 0; i < SobelAmpXY.rows; i++) {
+        const uchar *pixelsThisRow_x = imageGradX.ptr<uchar>(i);
+        const uchar *pixelsThisRow_y = imageGradY.ptr<uchar>(i);
+        float *pixelsThisRow_xy = SobelAmpXY.ptr<float>(i);
         for (int j = 0; j < SobelAmpXY.cols; j++) {
-            SobelAmpXY.at<float>(i, j) = static_cast<float>(sqrt(
-                    imageGradX.at<uchar>(i, j) * imageGradX.at<uchar>(i, j) +
-                    imageGradY.at<uchar>(i, j) * imageGradY.at<uchar>(i, j)));
+//            cout << SobelAmpXY.cols << endl;
+            const uchar xj = pixelsThisRow_x[j];
+            const uchar yj = pixelsThisRow_y[j];
+            pixelsThisRow_xy[j] = static_cast<float>(sqrt(xj * xj + yj * yj));
         }
     }
     convertScaleAbs(SobelAmpXY, SobelAmpXY);
@@ -199,40 +221,162 @@ void DoubleThreshold(Mat &imageInput, Mat &lowOutput, Mat &highOutput, double lo
 //第三个参数highThreshold是高阈值
 //*************************************************************
 void DoubleThresholdLink(Mat &imageInput, double lowThreshold, double highThreshold) {
-    for (int i = 1; i < imageInput.rows - 1; i++) {
-        for (int j = 1; j < imageInput.cols - 1; j++) {
-            if (imageInput.at<uchar>(i, j) > lowThreshold && imageInput.at<uchar>(i, j) < 255) {
-                if (imageInput.at<uchar>(i - 1, j - 1) == 255 || imageInput.at<uchar>(i - 1, j) == 255 ||
-                    imageInput.at<uchar>(i - 1, j + 1) == 255 ||
-                    imageInput.at<uchar>(i, j - 1) == 255 || imageInput.at<uchar>(i, j) == 255 ||
-                    imageInput.at<uchar>(i, j + 1) == 255 ||
-                    imageInput.at<uchar>(i + 1, j - 1) == 255 || imageInput.at<uchar>(i + 1, j) == 255 ||
-                    imageInput.at<uchar>(i + 1, j + 1) == 255) {
-                    imageInput.at<uchar>(i, j) = 255;
+    int rowCount = imageInput.rows;
+    int columnCount = imageInput.cols;
+    uchar *pixelsPreviousRow = imageInput.ptr<uchar>(0);
+    uchar *pixelsThisRow = imageInput.ptr<uchar>(1);
+    uchar *pixelsNextRow = imageInput.ptr<uchar>(2);
+    for (int i = 1; i < rowCount - 1; i++) {
+        for (int j = 1; j < columnCount - 1; j++) {
+            if (pixelsThisRow[j] > lowThreshold && pixelsThisRow[j] < 255) {
+                if (pixelsPreviousRow[j - 1] == 255 ||
+                    pixelsPreviousRow[j] == 255 ||
+                    pixelsPreviousRow[j + 1] == 255 ||
+                    pixelsThisRow[j - 1] == 255 ||
+                    pixelsThisRow[j] == 255 ||
+                    pixelsThisRow[j + 1] == 255 ||
+                    pixelsNextRow[j - 1] == 255 ||
+                    pixelsNextRow[j] == 255 ||
+                    pixelsNextRow[j + 1] == 255) {
+                    pixelsThisRow[j] = 255;
                     DoubleThresholdLink(imageInput, lowThreshold, highThreshold); //递归调用
                 } else {
-                    imageInput.at<uchar>(i, j) = 0;
+                    pixelsThisRow[j] = 0;
                 }
+            }
+        }
+        pixelsPreviousRow = pixelsThisRow;
+        pixelsThisRow = pixelsNextRow;
+        pixelsNextRow = imageInput.ptr<uchar>(i + 2);
+    }
+}
+
+//void DoubleThresholdLink(Mat &imageInput, double lowThreshold, double highThreshold) {
+//    int rowCount = imageInput.rows;
+//    int columnCount = imageInput.cols;
+//    uchar* pointer = imageInput.data;
+//    int step = imageInput.step;
+//    for (int i = 1; i < rowCount - 1; i++) {
+//        for (int j = 1; j < columnCount - 1; j++) {
+//            if (pointer[i * step + j] > lowThreshold && pointer[i * step + j] < 255) {
+//                if (pointer[(i - 1) * step + j - 1] == 255 ||
+//                    pointer[(i - 1) * step + j] == 255 ||
+//                    pointer[(i - 1) * step + j + 1] == 255 ||
+//                    pointer[i * step + j - 1] == 255 ||
+//                    pointer[i * step + j] == 255 ||
+//                    pointer[i * step + j + 1] == 255 ||
+//                    pointer[(i + 1) * step + j - 1] == 255 ||
+//                    pointer[(i + 1) * step + j] == 255 ||
+//                    pointer[(i + 1) * step + j + 1] == 255) {
+//                    pointer[i * step + j] = 255;
+//                    DoubleThresholdLink(imageInput, lowThreshold, highThreshold); //递归调用
+//                } else {
+//                    pointer[i * step + j] = 0;
+//                }
+//            }
+//        }
+//    }
+//}
+
+void LinkEdge(Mat &imageOutput, const Mat &lowThresImage, const Mat &highThresImage, int &count) {
+    imageOutput = highThresImage.clone();
+    int rowCount = imageOutput.rows;
+    int columnCount = imageOutput.cols;
+    // 为计算方便，牺牲图像四周1像素宽的一圈
+    for (int i = 1; i < rowCount - 1; i++) {
+        uchar *pixelsPreviousRow = imageOutput.ptr<uchar>(i - 1);
+        uchar *pixelsThisRow = imageOutput.ptr<uchar>(i);
+        uchar *pixelsNextRow = imageOutput.ptr<uchar>(i + 1);
+        for (int j = 1; j < columnCount - 1; j++) {
+            if (pixelsThisRow[j] == 255) {
+                GoAhead(i, j, pixelsPreviousRow, pixelsThisRow, pixelsNextRow, lowThresImage, imageOutput, count);
+            }
+            if (pixelsNextRow[j - 1] == 255) {
+                GoAhead(i + 1, j - 1, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage,
+                        imageOutput, count);
+            }
+            if (pixelsNextRow[j] == 255) {
+                GoAhead(i + 1, j, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage,
+                        imageOutput, count);
+            }
+            if (pixelsNextRow[j + 1] == 255) {
+                GoAhead(i + 1, j + 1, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage,
+                        imageOutput, count);
             }
         }
     }
 }
 
-void LinkEdge(Mat &imageOutput, Mat lowThresImage, Mat highThresImage) {
-    imageOutput = highThresImage.clone();
-    int rowCount = imageOutput.rows;
-    int columnCount = imageOutput.cols;
-    for (int i = 0; i < rowCount - 1; i++) {
-        uchar* pixelsThisRow = imageOutput.ptr<uchar>(i);
-        uchar* pixelsNextRow = imageOutput.ptr<uchar>(i + 1);
-        for (int j = 1; i < columnCount - 1; j++) {
-            if (pixelsThisRow[j] == 255) {
-                // 判断左下方、右方、下方和右下方是否接续
-                if (pixelsThisRow[j + 1] != 255 && pixelsNextRow[j + 1] != 255 && pixelsNextRow[j] != 255 && pixelsNextRow[j - 1] != 255) {
-                    // 若不接续，从低阈值图中查找8领域是否接续
-                    
-                }
+void
+GoAhead(int i, int j, uchar *pixelsPreviousRow, uchar *pixelsThisRow, uchar *pixelsNextRow, const Mat &lowThresImage,
+        Mat &imageOutput, int &count) {
+    count++;
+    // 判断左下方、右方、下方和右下方是否接续
+    if (pixelsThisRow[j + 1] != 255 && pixelsNextRow[j + 1] != 255 && pixelsNextRow[j] != 255 &&
+        pixelsNextRow[j - 1] != 255) {
+        // 若不接续，从低阈值图中查找8领域是否接续
+        const uchar *pixelsPreviousRow_low = lowThresImage.ptr<uchar>(i - 1);
+        const uchar *pixelsThisRow_low = lowThresImage.ptr<uchar>(i);
+        const uchar *pixelsNextRow_low = lowThresImage.ptr<uchar>(i + 1);
+        // 左上
+        if (pixelsPreviousRow_low[j - 1] == 255) {
+            pixelsPreviousRow[j - 1] = 255;
+            if (i != 0 && j != 0) {
+                GoAhead(i - 1, j - 1, imageOutput.ptr<uchar>(i - 1), pixelsPreviousRow, pixelsThisRow, lowThresImage,
+                        imageOutput, count);
             }
+        }
+        // 上
+        if (pixelsPreviousRow_low[j] == 255) {
+            pixelsPreviousRow[j] = 255;
+            if (i != 0) {
+                GoAhead(i - 1, j, imageOutput.ptr<uchar>(i - 1), pixelsPreviousRow, pixelsThisRow, lowThresImage,
+                        imageOutput, count);
+            }
+        }
+        // 右上
+        if (pixelsPreviousRow_low[j + 1] == 255) {
+            pixelsPreviousRow[j + 1] = 255;
+            if (i != 0 && j != imageOutput.cols) {
+                GoAhead(i - 1, j + 1, imageOutput.ptr<uchar>(i - 1), pixelsPreviousRow, pixelsThisRow, lowThresImage,
+                        imageOutput, count);
+            }
+        }
+        // 左
+        if (pixelsThisRow_low[j - 1] == 255) {
+            pixelsThisRow[j - 1] = 255;
+            if (i != 0 && j != 0) {
+                GoAhead(i - 1, j - 1, imageOutput.ptr<uchar>(i - 1), pixelsPreviousRow, pixelsThisRow, lowThresImage,
+                        imageOutput, count);
+            }
+        }
+        // 右
+        if (pixelsThisRow_low[j + 1] == 255) {
+            pixelsThisRow[j + 1] = 255;
+//            if (i != 0 && j != imageOutput.cols) {
+//                GoAhead(i - 1, j + 1, imageOutput.ptr<uchar>(i - 1), pixelsPreviousRow, pixelsThisRow, lowThresImage, imageOutput);
+//            }
+        }
+        // 左下
+        if (pixelsNextRow_low[j - 1] == 255) {
+            pixelsNextRow[j - 1] = 255;
+//            if (i != imageOutput.rows && j != 0) {
+//                GoAhead(i + 1, j - 1, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage, imageOutput);
+//            }
+        }
+        // 下
+        if (pixelsNextRow_low[j] == 255) {
+            pixelsNextRow[j] = 255;
+//            if (i != imageOutput.rows) {
+//                GoAhead(i + 1, j, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage, imageOutput);
+//            }
+        }
+        // 右下
+        if (pixelsNextRow_low[j + 1] == 255) {
+            pixelsNextRow[j + 1] = 255;
+//            if (i != imageOutput.rows && j != imageOutput.cols) {
+//                GoAhead(i + 1, j + 1, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage, imageOutput);
+//            }
         }
     }
 }
