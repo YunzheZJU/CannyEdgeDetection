@@ -2,9 +2,20 @@
 #include <ctime>
 
 int main() {
-    Mat src = imread("lena.png");
-    Mat result = Candy(src);
-    imshow("My Candy Detection", result);
+    VideoCapture capture(0);
+//    while (true) {
+        Mat frame;
+        cout << getBuildInformation() << endl;
+        capture.read(frame);
+        imshow("CandyO", frame);
+        Mat result = Candy(frame);
+        imshow("Candy", result);
+//        if (waitKey(300) >= 0) {
+//            break;
+//        };
+//    }
+//    Mat src = imread("lena.png");
+//    imshow("My Candy Detection", result);
     waitKey();
     return 0;
 }
