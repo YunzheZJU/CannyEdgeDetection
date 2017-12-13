@@ -2,8 +2,7 @@
 #include <ctime>
 
 int main() {
-    Mat src = imread("2.jpg");
-//    imshow("Original", src);
+    Mat src = imread("lena.png");
     Mat result = Candy(src);
     imshow("My Candy Detection", result);
     waitKey();
@@ -21,54 +20,54 @@ Mat Candy(const Mat &frame) {
     Mat imageGaussion;
     GaussianBlur(imageGray, imageGaussion, Size(3, 3), 0, 0);
     time_1 = clock();
-//    imshow("After Gaussian Blur", result);
     cout << "1. Filtering takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Enhancing
-    Mat imageSobelY;
-    Mat imageSobelX;
+    Mat imageGradientY;
+    Mat imageGradientX;
     double *pointDirection; //定义梯度方向角数组
     time_0 = clock();
-    SobelGradDirection(imageGaussion, imageSobelX, imageSobelY, pointDirection);  //计算X、Y方向梯度和方向角
+    GenerateGradient(imageGaussion, imageGradientX, imageGradientY, pointDirection);  //计算X、Y方向梯度和方向角
     time_1 = clock();
-    cout << "2. SobelGradDirection takes " << time_1 - time_0 << " milliseconds." << endl;
+    cout << "2. GenerateGradient takes " << time_1 - time_0 << " milliseconds." << endl;
 
-    Mat SobelGradAmpl;
+    Mat imageGradient;
     time_0 = clock();
-    SobelAmplitude(imageSobelX, imageSobelY, SobelGradAmpl);   //计算X、Y方向梯度融合幅值
-//    imshow("Soble XYRange", SobelGradAmpl);
+    CombineGradient(imageGradientX, imageGradientY, imageGradient);   //计算X、Y方向梯度融合幅值
     time_1 = clock();
-    cout << "3. SobelAmplitude takes " << time_1 - time_0 << " milliseconds." << endl;
-//    imshow("Sobel Y",imageSobelY);
-//    imshow("Sobel X",imageSobelX);
+    cout << "3. CombineGradient takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Detecting
-    Mat imageLocalMax;
+    Mat imageNMS;
     time_0 = clock();
-    LocalMaxValue(SobelGradAmpl, imageLocalMax, pointDirection);  //局部非极大值抑制
-//    imshow("Non-Maximum Image",imageLocalMax);
+    NMS(imageGradient, imageNMS, pointDirection);  //局部非极大值抑制
     time_1 = clock();
-    cout << "4. LocalMaxValue takes " << time_1 - time_0 << " milliseconds." << endl;
+    cout << "4. NMS takes " << time_1 - time_0 << " milliseconds." << endl;
 
-    Mat lowThresImage;
-    Mat highThresImage;
+    Mat imageLowThreshold;
+    Mat imageHighThreshold;
     time_0 = clock();
-    DoubleThreshold(imageLocalMax, lowThresImage, highThresImage, 90, 160);        //双阈值处理
-//    imshow("Double Threshold Image",imageLocalMax);
-//    imshow("Low Threshold Image", lowThresImage);
-//    imshow("High Threshold Image", highThresImage);
+    SplitWithThreshold(imageNMS, imageLowThreshold, imageHighThreshold, 70, 120);        //双阈值处理
     time_1 = clock();
-    cout << "5. DoubleThreshold takes " << time_1 - time_0 << " milliseconds." << endl;
+    cout << "5. SplitWithThreshold takes " << time_1 - time_0 << " milliseconds." << endl;
 
     Mat imageCandy;
-//    DoubleThresholdLink(imageLocalMax, 90, 160);   //双阈值中间阈值滤除及连接
     time_0 = clock();
-    LinkEdge(imageCandy, lowThresImage, highThresImage);
+    LinkEdge(imageCandy, imageLowThreshold, imageHighThreshold);
     time_1 = clock();
     cout << "6. DoubleThresholdLink takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Done
+//    imshow("Original", frame);
+//    imshow("Gaussian Blur", imageGaussion);
+//    imshow("Gradient X", imageGradientX);
+//    imshow("Gradient Y", imageGradientY);
+//    imshow("Combine Gradient X and Y", imageGradient);
+//    imshow("NMS Image", imageNMS);
+//    imshow("Low Threshold", imageLowThreshold);
+//    imshow("High Threshold", imageHighThreshold);
+//    imshow("Combine Low and High Threshold", imageNMS);
     return imageCandy;
 }
 
-void SobelGradDirection(const Mat imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDirection) {
+void GenerateGradient(const Mat &imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDirection) {
     int time_0;
     int time_1;
     time_0 = clock();
@@ -83,7 +82,6 @@ void SobelGradDirection(const Mat imageSource, Mat &imageSobelX, Mat &imageSobel
 
     int step = imageSource.step;
     int stepXY = imageSobelX.step;
-    int k = 0;
     int rowCount = imageSource.rows;
     int columnCount = imageSource.cols;
     time_0 = clock();
@@ -93,7 +91,7 @@ void SobelGradDirection(const Mat imageSource, Mat &imageSobelX, Mat &imageSobel
         const uchar *pixelsNextRow = imageSource.ptr<uchar>(i + 1);
         uchar *pixelsThisRow_x = imageSobelX.ptr<uchar>(i);
         uchar *pixelsThisRow_y = imageSobelY.ptr<uchar>(i);
-        for (int j = 1; j < (columnCount - 1); j++, k++) {
+        for (int j = 1, k = 0; j < (columnCount - 1); j++, k++) {
             //通过指针遍历图像上每一个像素
             double gradY = pixelsPreviousRow[j + 1] + pixelsThisRow[j + 1] * 2 + pixelsNextRow[j + 1] -
                            pixelsPreviousRow[j - 1] - pixelsThisRow[j - 1] * 2 - pixelsNextRow[j - 1];
@@ -114,24 +112,7 @@ void SobelGradDirection(const Mat imageSource, Mat &imageSobelX, Mat &imageSobel
     convertScaleAbs(imageSobelY, imageSobelY);
 }
 
-//******************计算Sobel的X和Y方向梯度幅值*************************
-//第一个参数imageGradX是X方向梯度图像；
-//第二个参数imageGradY是Y方向梯度图像；
-//第三个参数SobelAmpXY是输出的X、Y方向梯度图像幅值
-//*************************************************************
-//void SobelAmplitude(const Mat imageGradX, const Mat &imageGradY, Mat &SobelAmpXY) {
-//    SobelAmpXY = Mat::zeros(imageGradX.size(), CV_32FC1);
-//    for (int i = 0; i < SobelAmpXY.rows; i++) {
-//        for (int j = 0; j < SobelAmpXY.cols; j++) {
-//            SobelAmpXY.at<float>(i, j) = static_cast<float>(sqrt(
-//                    imageGradX.at<uchar>(i, j) * imageGradX.at<uchar>(i, j) +
-//                    imageGradY.at<uchar>(i, j) * imageGradY.at<uchar>(i, j)));
-//        }
-//    }
-//    convertScaleAbs(SobelAmpXY, SobelAmpXY);
-//}
-
-void SobelAmplitude(const Mat imageGradX, const Mat &imageGradY, Mat &SobelAmpXY) {
+void CombineGradient(const Mat &imageGradX, const Mat &imageGradY, Mat &SobelAmpXY) {
     SobelAmpXY = Mat::zeros(imageGradX.size(), CV_32FC1);
     for (int i = 0; i < SobelAmpXY.rows; i++) {
         const uchar *pixelsThisRow_x = imageGradX.ptr<uchar>(i);
@@ -146,52 +127,41 @@ void SobelAmplitude(const Mat imageGradX, const Mat &imageGradY, Mat &SobelAmpXY
     convertScaleAbs(SobelAmpXY, SobelAmpXY);
 }
 
-//******************局部极大值抑制*************************
-//第一个参数imageInput输入的Sobel梯度图像；
-//第二个参数imageOutPut是输出的局部极大值抑制图像；
-//第三个参数pointDirection是图像上每个点的梯度方向数组指针
-//*************************************************************
-void LocalMaxValue(const Mat imageInput, Mat &imageOutput, double *pointDirection) {
-    //imageInput.copyTo(imageOutput);
+void NMS(const Mat &imageInput, Mat &imageOutput, double *pointDirection) {
     imageOutput = imageInput.clone();
-    int k = 0;
     int rowCount = imageInput.rows;
     int columnCount = imageInput.cols;
     for (int i = 1; i < rowCount - 1; i++) {
         uchar *pixelsPreviousRow = imageOutput.ptr<uchar>(i - 1);
         uchar *pixelsThisRow = imageOutput.ptr<uchar>(i);
         uchar *pixelsNextRow = imageOutput.ptr<uchar>(i + 1);
-        for (int j = 1; j < columnCount - 1; j++, k++) {
-            int value00 = pixelsPreviousRow[j - 1];
-            int value01 = pixelsPreviousRow[j];
-            int value02 = pixelsPreviousRow[j + 1];
-            int value10 = pixelsThisRow[j - 1];
-            int value11 = pixelsThisRow[j];
-            int value12 = pixelsThisRow[j + 1];
-            int value20 = pixelsNextRow[j - 1];
-            int value21 = pixelsNextRow[j];
-            int value22 = pixelsNextRow[j + 1];
-            double tpD = tan(pointDirection[i * (columnCount - 1) + j]);
-            double tpD_180 = tan(180 - pointDirection[i * (columnCount - 1) + j]);
+        for (int j = 1, k = 0; j < columnCount - 1; j++, k++) {
+            double tPD = tan(pointDirection[i * (columnCount - 1) + j]);
+            double tPD_180 = tan(180 - pointDirection[i * (columnCount - 1) + j]);
 
             if (pointDirection[k] <= 45) {
-                if (value11 <= (value12 + (value02 - value12) * tpD) ||
-                    (value11 <= (value10 + (value20 - value10) * tpD))) {
+                if (pixelsThisRow[j] <=
+                    (pixelsThisRow[j + 1] + (pixelsPreviousRow[j + 1] - pixelsThisRow[j + 1]) * tPD) ||
+                    (pixelsThisRow[j] <=
+                     (pixelsThisRow[j - 1] + (pixelsNextRow[j - 1] - pixelsThisRow[j - 1]) * tPD))) {
                     pixelsThisRow[j] = 0;
                 }
             } else if (pointDirection[k] <= 90) {
-                if (value11 <= (value01 + (value02 - value01) / tpD) ||
-                    value11 <= (value21 + (value20 - value21) / tpD)) {
+                if (pixelsThisRow[j] <=
+                    (pixelsPreviousRow[j] + (pixelsPreviousRow[j + 1] - pixelsPreviousRow[j]) / tPD) ||
+                    pixelsThisRow[j] <= (pixelsNextRow[j] + (pixelsNextRow[j - 1] - pixelsNextRow[j]) / tPD)) {
                     pixelsThisRow[j] = 0;
                 }
             } else if (pointDirection[k] <= 135) {
-                if (value11 <= (value01 + (value00 - value01) / tpD_180) ||
-                    value11 <= (value21 + (value22 - value21) / tpD_180)) {
+                if (pixelsThisRow[j] <=
+                    (pixelsPreviousRow[j] + (pixelsPreviousRow[j - 1] - pixelsPreviousRow[j]) / tPD_180) ||
+                    pixelsThisRow[j] <= (pixelsNextRow[j] + (pixelsNextRow[j + 1] - pixelsNextRow[j]) / tPD_180)) {
                     pixelsThisRow[j] = 0;
                 }
-            } else if (pointDirection[k] <= 181) {
-                if (value11 <= (value10 + (value00 - value10) * tpD_180) ||
-                    value11 <= (value12 + (value22 - value11) * tpD_180)) {
+            } else if (pointDirection[k] <= 180) {
+                if (pixelsThisRow[j] <=
+                    (pixelsThisRow[j - 1] + (pixelsPreviousRow[j - 1] - pixelsThisRow[j - 1]) * tPD_180) ||
+                    pixelsThisRow[j] <= (pixelsThisRow[j + 1] + (pixelsNextRow[j + 1] - pixelsThisRow[j]) * tPD_180)) {
                     pixelsThisRow[j] = 0;
                 }
             } else {
@@ -201,18 +171,13 @@ void LocalMaxValue(const Mat imageInput, Mat &imageOutput, double *pointDirectio
     }
 }
 
-//******************双阈值处理*************************
-//第一个参数imageInput输入和输出的的Sobel梯度幅值图像；
-//第二个参数lowThreshold是低阈值
-//第三个参数highThreshold是高阈值
-//******************************************************
-void DoubleThreshold(Mat &imageInput, Mat &lowOutput, Mat &highOutput, double lowThreshold, double highThreshold) {
+void SplitWithThreshold(const Mat &imageInput, Mat &lowOutput, Mat &highOutput, double lowThreshold, double highThreshold) {
     lowOutput = imageInput.clone();
     highOutput = imageInput.clone();
     int rowCount = imageInput.rows;
     int columnCount = imageInput.cols;
     for (int i = 0; i < rowCount; i++) {
-        uchar *pixelsThisRow = imageInput.ptr<uchar>(i);
+        const uchar *pixelsThisRow = imageInput.ptr<uchar>(i);
         uchar *pixelsThisRow_low = lowOutput.ptr<uchar>(i);
         uchar *pixelsThisRow_high = highOutput.ptr<uchar>(i);
         for (int j = 0; j < columnCount; j++) {
@@ -230,69 +195,6 @@ void DoubleThreshold(Mat &imageInput, Mat &lowOutput, Mat &highOutput, double lo
         }
     }
 }
-
-//******************双阈值中间像素连接处理*********************
-//第一个参数imageInput输入和输出的的Sobel梯度幅值图像；
-//第二个参数lowThreshold是低阈值
-//第三个参数highThreshold是高阈值
-//*************************************************************
-void DoubleThresholdLink(Mat &imageInput, double lowThreshold, double highThreshold) {
-    int rowCount = imageInput.rows;
-    int columnCount = imageInput.cols;
-    uchar *pixelsPreviousRow = imageInput.ptr<uchar>(0);
-    uchar *pixelsThisRow = imageInput.ptr<uchar>(1);
-    uchar *pixelsNextRow = imageInput.ptr<uchar>(2);
-    for (int i = 1; i < rowCount - 1; i++) {
-        for (int j = 1; j < columnCount - 1; j++) {
-            if (pixelsThisRow[j] > lowThreshold && pixelsThisRow[j] < 255) {
-                if (pixelsPreviousRow[j - 1] == 255 ||
-                    pixelsPreviousRow[j] == 255 ||
-                    pixelsPreviousRow[j + 1] == 255 ||
-                    pixelsThisRow[j - 1] == 255 ||
-                    pixelsThisRow[j] == 255 ||
-                    pixelsThisRow[j + 1] == 255 ||
-                    pixelsNextRow[j - 1] == 255 ||
-                    pixelsNextRow[j] == 255 ||
-                    pixelsNextRow[j + 1] == 255) {
-                    pixelsThisRow[j] = 255;
-                    DoubleThresholdLink(imageInput, lowThreshold, highThreshold); //递归调用
-                } else {
-                    pixelsThisRow[j] = 0;
-                }
-            }
-        }
-        pixelsPreviousRow = pixelsThisRow;
-        pixelsThisRow = pixelsNextRow;
-        pixelsNextRow = imageInput.ptr<uchar>(i + 2);
-    }
-}
-
-//void DoubleThresholdLink(Mat &imageInput, double lowThreshold, double highThreshold) {
-//    int rowCount = imageInput.rows;
-//    int columnCount = imageInput.cols;
-//    uchar* pointer = imageInput.data;
-//    int step = imageInput.step;
-//    for (int i = 1; i < rowCount - 1; i++) {
-//        for (int j = 1; j < columnCount - 1; j++) {
-//            if (pointer[i * step + j] > lowThreshold && pointer[i * step + j] < 255) {
-//                if (pointer[(i - 1) * step + j - 1] == 255 ||
-//                    pointer[(i - 1) * step + j] == 255 ||
-//                    pointer[(i - 1) * step + j + 1] == 255 ||
-//                    pointer[i * step + j - 1] == 255 ||
-//                    pointer[i * step + j] == 255 ||
-//                    pointer[i * step + j + 1] == 255 ||
-//                    pointer[(i + 1) * step + j - 1] == 255 ||
-//                    pointer[(i + 1) * step + j] == 255 ||
-//                    pointer[(i + 1) * step + j + 1] == 255) {
-//                    pointer[i * step + j] = 255;
-//                    DoubleThresholdLink(imageInput, lowThreshold, highThreshold); //递归调用
-//                } else {
-//                    pointer[i * step + j] = 0;
-//                }
-//            }
-//        }
-//    }
-//}
 
 void LinkEdge(Mat &imageOutput, const Mat &lowThresImage, const Mat &highThresImage) {
     imageOutput = highThresImage.clone();
@@ -329,7 +231,7 @@ GoAhead(int i, int j, uchar *pixelsPreviousRow, uchar *pixelsThisRow, uchar *pix
     // 判断左下方、右方、下方和右下方是否接续
     if (pixelsThisRow[j + 1] != 255 && pixelsNextRow[j + 1] != 255 && pixelsNextRow[j] != 255 &&
         pixelsNextRow[j - 1] != 255) {
-        // 若不接续，从低阈值图中查找8领域是否接续
+        // 若不接续，从低阈值图中查找8领域是否接续，并对左上方、上方、右上方和左上方递归调用自身
         const uchar *pixelsPreviousRow_low = lowThresImage.ptr<uchar>(i - 1);
         const uchar *pixelsThisRow_low = lowThresImage.ptr<uchar>(i);
         const uchar *pixelsNextRow_low = lowThresImage.ptr<uchar>(i + 1);
@@ -368,30 +270,18 @@ GoAhead(int i, int j, uchar *pixelsPreviousRow, uchar *pixelsThisRow, uchar *pix
         // 右
         if (pixelsThisRow_low[j + 1] == 255) {
             pixelsThisRow[j + 1] = 255;
-//            if (i != 0 && j != imageOutput.cols) {
-//                GoAhead(i - 1, j + 1, imageOutput.ptr<uchar>(i - 1), pixelsPreviousRow, pixelsThisRow, lowThresImage, imageOutput);
-//            }
         }
         // 左下
         if (pixelsNextRow_low[j - 1] == 255) {
             pixelsNextRow[j - 1] = 255;
-//            if (i != imageOutput.rows && j != 0) {
-//                GoAhead(i + 1, j - 1, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage, imageOutput);
-//            }
         }
         // 下
         if (pixelsNextRow_low[j] == 255) {
             pixelsNextRow[j] = 255;
-//            if (i != imageOutput.rows) {
-//                GoAhead(i + 1, j, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage, imageOutput);
-//            }
         }
         // 右下
         if (pixelsNextRow_low[j + 1] == 255) {
             pixelsNextRow[j + 1] = 255;
-//            if (i != imageOutput.rows && j != imageOutput.cols) {
-//                GoAhead(i + 1, j + 1, pixelsThisRow, pixelsNextRow, imageOutput.ptr<uchar>(i + 1), lowThresImage, imageOutput);
-//            }
         }
     }
 }
