@@ -26,20 +26,22 @@ Mat Candy(const Mat &frame) {
     double *pointDirection;
     pointDirection = new double[(imageSobelX.cols - 1) * (imageSobelX.rows - 1)];  //定义梯度方向角数组
     SobelGradDirction(result, imageSobelX, imageSobelY, pointDirection);  //计算X、Y方向梯度和方向角
+    int time_2 = clock();
+    cout << "2. SobelGradDirction takes " << time_2 - time_1 << " milliseconds." << endl;
 
     Mat SobelGradAmpl;
     SobelAmplitude(imageSobelX, imageSobelY, SobelGradAmpl);   //计算X、Y方向梯度融合幅值
 //    imshow("Soble XYRange", SobelGradAmpl);
-    int time_2 = clock();
-    cout << "2. Enhancing takes " << time_2 - time_1 << " milliseconds." << endl;
+    int time_3 = clock();
+    cout << "3. SobelAmplitude takes " << time_3 - time_2 << " milliseconds." << endl;
 //    imshow("Sobel Y",imageSobelY);
 //    imshow("Sobel X",imageSobelX);
 //    Detecting
     Mat imageLocalMax;
     LocalMaxValue(SobelGradAmpl, imageLocalMax, pointDirection);  //局部非极大值抑制
 //    imshow("Non-Maximum Image",imageLocalMax);
-    int time_3 = clock();
-    cout << "3. LocalMaxValue takes " << time_3 - time_2 << " milliseconds." << endl;
+    int time_4 = clock();
+    cout << "4. LocalMaxValue takes " << time_4 - time_3 << " milliseconds." << endl;
 
     Mat cannyImage;
     Mat lowThresImage;
@@ -49,50 +51,51 @@ Mat Candy(const Mat &frame) {
 //    imshow("Double Threshold Image",imageLocalMax);
     imshow("Low Threshold Image", lowThresImage);
     imshow("High Threshold Image", highThresImage);
-    int time_4 = clock();
-    cout << "4. DoubleThreshold takes " << time_4 - time_3 << " milliseconds." << endl;
+    int time_5 = clock();
+    cout << "5. DoubleThreshold takes " << time_5 - time_4 << " milliseconds." << endl;
 
 //    DoubleThresholdLink(imageLocalMax, 90, 160);   //双阈值中间阈值滤除及连接
     int count = 0;
     LinkEdge(imageLocalMax, lowThresImage, highThresImage, count);
-    int time_5 = clock();
+    int time_6 = clock();
     cout << "Count: " << count << endl;
-    cout << "5. DoubleThresholdLink takes " << time_5 - time_4 << " milliseconds." << endl;
+    cout << "6. DoubleThresholdLink takes " << time_6 - time_5 << " milliseconds." << endl;
 //    Done
     return imageLocalMax;
 }
 
-void SobelGradDirction(const Mat imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDrection) {
-    pointDrection = new double[(imageSource.rows - 1) * (imageSource.cols - 1)];
+void SobelGradDirction(const Mat imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDirection) {
+    pointDirection = new double[(imageSource.rows - 1) * (imageSource.cols - 1)];
     for (int i = 0; i < (imageSource.rows - 1) * (imageSource.cols - 1); i++) {
-        pointDrection[i] = 0;
+        pointDirection[i] = 0;
     }
     imageSobelX = Mat::zeros(imageSource.size(), CV_32SC1);
     imageSobelY = Mat::zeros(imageSource.size(), CV_32SC1);
-//    uchar *P = imageSource.data;
-//    uchar *PX = imageSobelX.data;
-//    uchar *PY = imageSobelY.data;
-    
+
     int step = imageSource.step;
     int stepXY = imageSobelX.step;
     int k = 0;
-    for (int i = 1; i < (imageSource.rows - 1); i++) {
+    int rowCount = imageSource.rows;
+    int columnCount = imageSource.cols;
+    for (int i = 1; i < (rowCount - 1); i++) {
         const uchar *pixelsPreviousRow = imageSource.ptr<uchar>(i - 1);
         const uchar *pixelsThisRow = imageSource.ptr<uchar>(i);
         const uchar *pixelsNextRow = imageSource.ptr<uchar>(i + 1);
-        for (int j = 1; j < (imageSource.cols - 1); j++) {
+        uchar *pixelsThisRow_x = imageSobelX.ptr<uchar>(i);
+        uchar *pixelsThisRow_y = imageSobelY.ptr<uchar>(i);
+        for (int j = 1; j < (columnCount - 1); j++) {
             //通过指针遍历图像上每一个像素
             double gradY = pixelsPreviousRow[j + 1] + pixelsThisRow[j + 1] * 2 + pixelsNextRow[j + 1] -
-                    pixelsPreviousRow[j - 1] - pixelsThisRow[j - 1] * 2 - pixelsNextRow[j - 1];
-            PY[i * stepXY + j * (stepXY / step)] = static_cast<uchar>(abs(gradY));
+                           pixelsPreviousRow[j - 1] - pixelsThisRow[j - 1] * 2 - pixelsNextRow[j - 1];
+            pixelsThisRow_y[j * (stepXY / step)] = static_cast<uchar>(abs(gradY));
             double gradX = pixelsNextRow[j - 1] + pixelsNextRow[j] * 2 + pixelsNextRow[j + 1] -
-                    pixelsPreviousRow[j - 1] - pixelsPreviousRow[j] * 2 - pixelsPreviousRow[j + 1];
-            PX[i * stepXY + j * (stepXY / step)] = static_cast<uchar>(abs(gradX));
+                           pixelsPreviousRow[j - 1] - pixelsPreviousRow[j] * 2 - pixelsPreviousRow[j + 1];
+            pixelsThisRow_x[j * (stepXY / step)] = static_cast<uchar>(abs(gradX));
             if (gradX == 0) {
                 gradX = 0.00000000000000001;  //防止除数为0异常
             }
-            pointDrection[k] = atan(gradY / gradX) * 57.3;//弧度转换为度
-            pointDrection[k] += 90;
+            pointDirection[k] = atan(gradY / gradX) * 57.3;//弧度转换为度
+            pointDirection[k] += 90;
             k++;
         }
     }
@@ -124,7 +127,6 @@ void SobelAmplitude(const Mat imageGradX, const Mat &imageGradY, Mat &SobelAmpXY
         const uchar *pixelsThisRow_y = imageGradY.ptr<uchar>(i);
         float *pixelsThisRow_xy = SobelAmpXY.ptr<float>(i);
         for (int j = 0; j < SobelAmpXY.cols; j++) {
-//            cout << SobelAmpXY.cols << endl;
             const uchar xj = pixelsThisRow_x[j];
             const uchar yj = pixelsThisRow_y[j];
             pixelsThisRow_xy[j] = static_cast<float>(sqrt(xj * xj + yj * yj));
@@ -142,46 +144,46 @@ void LocalMaxValue(const Mat imageInput, Mat &imageOutput, double *pointDirectio
     //imageInput.copyTo(imageOutput);
     imageOutput = imageInput.clone();
     int k = 0;
-    for (int i = 1; i < imageInput.rows - 1; i++) {
-        for (int j = 1; j < imageInput.cols - 1; j++) {
-            int value00 = imageInput.at<uchar>((i - 1), j - 1);
-            int value01 = imageInput.at<uchar>((i - 1), j);
-            int value02 = imageInput.at<uchar>((i - 1), j + 1);
-            int value10 = imageInput.at<uchar>((i), j - 1);
-            int value11 = imageInput.at<uchar>((i), j);
-            int value12 = imageInput.at<uchar>((i), j + 1);
-            int value20 = imageInput.at<uchar>((i + 1), j - 1);
-            int value21 = imageInput.at<uchar>((i + 1), j);
-            int value22 = imageInput.at<uchar>((i + 1), j + 1);
+    int rowCount = imageInput.rows;
+    int columnCount = imageInput.cols;
+    for (int i = 1; i < rowCount - 1; i++) {
+        uchar *pixelsPreviousRow = imageOutput.ptr<uchar>(i - 1);
+        uchar *pixelsThisRow = imageOutput.ptr<uchar>(i);
+        uchar *pixelsNextRow = imageOutput.ptr<uchar>(i + 1);
+        for (int j = 1; j < columnCount - 1; j++) {
+            int value00 = pixelsPreviousRow[j - 1];
+            int value01 = pixelsPreviousRow[j];
+            int value02 = pixelsPreviousRow[j + 1];
+            int value10 = pixelsThisRow[j - 1];
+            int value11 = pixelsThisRow[j];
+            int value12 = pixelsThisRow[j + 1];
+            int value20 = pixelsNextRow[j - 1];
+            int value21 = pixelsNextRow[j];
+            int value22 = pixelsNextRow[j + 1];
 
             if (pointDirection[k] > 0 && pointDirection[k] <= 45) {
-                if (value11 <= (value12 + (value02 - value12) * tan(pointDirection[i * (imageOutput.rows - 1) + j])) ||
-                    (value11 <=
-                     (value10 + (value20 - value10) * tan(pointDirection[i * (imageOutput.rows - 1) + j])))) {
-                    imageOutput.at<uchar>(i, j) = 0;
+                if (value11 <= (value12 + (value02 - value12) * tan(pointDirection[i * (rowCount - 1) + j])) ||
+                    (value11 <= (value10 + (value20 - value10) * tan(pointDirection[i * (rowCount - 1) + j])))) {
+                    pixelsThisRow[j] = 0;
                 }
             }
             if (pointDirection[k] > 45 && pointDirection[k] <= 90) {
-                if (value11 <= (value01 + (value02 - value01) / tan(pointDirection[i * (imageOutput.cols - 1) + j])) ||
-                    value11 <= (value21 + (value20 - value21) / tan(pointDirection[i * (imageOutput.cols - 1) + j]))) {
-                    imageOutput.at<uchar>(i, j) = 0;
+                if (value11 <= (value01 + (value02 - value01) / tan(pointDirection[i * (columnCount - 1) + j])) ||
+                    value11 <= (value21 + (value20 - value21) / tan(pointDirection[i * (columnCount - 1) + j]))) {
+                    pixelsThisRow[j] = 0;
 
                 }
             }
             if (pointDirection[k] > 90 && pointDirection[k] <= 135) {
-                if (value11 <=
-                    (value01 + (value00 - value01) / tan(180 - pointDirection[i * (imageOutput.cols - 1) + j])) ||
-                    value11 <=
-                    (value21 + (value22 - value21) / tan(180 - pointDirection[i * (imageOutput.cols - 1) + j]))) {
-                    imageOutput.at<uchar>(i, j) = 0;
+                if (value11 <= (value01 + (value00 - value01) / tan(180 - pointDirection[i * (columnCount - 1) + j])) ||
+                    value11 <= (value21 + (value22 - value21) / tan(180 - pointDirection[i * (columnCount - 1) + j]))) {
+                    pixelsThisRow[j] = 0;
                 }
             }
             if (pointDirection[k] > 135 && pointDirection[k] <= 180) {
-                if (value11 <=
-                    (value10 + (value00 - value10) * tan(180 - pointDirection[i * (imageOutput.cols - 1) + j])) ||
-                    value11 <=
-                    (value12 + (value22 - value11) * tan(180 - pointDirection[i * (imageOutput.cols - 1) + j]))) {
-                    imageOutput.at<uchar>(i, j) = 0;
+                if (value11 <= (value10 + (value00 - value10) * tan(180 - pointDirection[i * (columnCount - 1) + j])) ||
+                    value11 <= (value12 + (value22 - value11) * tan(180 - pointDirection[i * (columnCount - 1) + j]))) {
+                    pixelsThisRow[j] = 0;
                 }
             }
             k++;

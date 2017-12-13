@@ -19,7 +19,7 @@ Mat Candy(const Mat &frame);
 //第三个参数imageSobelY是Y方向梯度图像；
 //第四个参数pointDrection是梯度方向角数组指针
 //*************************************************************
-void SobelGradDirction(Mat imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDrection);
+void SobelGradDirction(Mat imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDirection);
 
 //******************计算Sobel的X和Y方向梯度幅值*************************
 //第一个参数imageGradX是X方向梯度图像；
