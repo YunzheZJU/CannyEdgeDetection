@@ -19,7 +19,7 @@ Mat Candy(const Mat &frame);
 //第三个参数imageSobelY是Y方向梯度图像；
 //第四个参数pointDrection是梯度方向角数组指针
 //*************************************************************
-void SobelGradDirction(Mat imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDirection);
+void SobelGradDirection(const Mat imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDirection);
 
 //******************计算Sobel的X和Y方向梯度幅值*************************
 //第一个参数imageGradX是X方向梯度图像；
@@ -49,8 +49,8 @@ void DoubleThreshold(Mat &imageInput, Mat &lowOutput, Mat &highOutput, double lo
 //*************************************************************
 void DoubleThresholdLink(Mat &imageInput, double lowThreshold, double highThreshold);
 
-void LinkEdge(Mat &imageOutput, const Mat &lowThresImage, const Mat &highThresImage, int &count);
+void LinkEdge(Mat &imageOutput, const Mat &lowThresImage, const Mat &highThresImage);
 
-void GoAhead(int i, int j, uchar* pixelsPreviousRow, uchar* pixelsThisRow, uchar* pixelsNextRow, const Mat &lowThresImage, Mat &imageOutput, int &count);
+void GoAhead(int i, int j, uchar* pixelsPreviousRow, uchar* pixelsThisRow, uchar* pixelsNextRow, const Mat &lowThresImage, Mat &imageOutput);
 
 #endif //OPENCV_A1_HEAD_H
