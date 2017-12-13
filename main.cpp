@@ -19,38 +19,38 @@ Mat Candy(const Mat &frame) {
     time_0 = clock();
     Mat imageGaussion;
     GaussianBlur(imageGray, imageGaussion, Size(3, 3), 0, 0);
-    time_1 = clock();
-    cout << "1. Filtering takes " << time_1 - time_0 << " milliseconds." << endl;
+//    time_1 = clock();
+//    cout << "1. Filtering takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Enhancing
     Mat imageGradientY;
     Mat imageGradientX;
     double *pointDirection; //定义梯度方向角数组
-    time_0 = clock();
+//    time_0 = clock();
     GenerateGradient(imageGaussion, imageGradientX, imageGradientY, pointDirection);  //计算X、Y方向梯度和方向角
-    time_1 = clock();
-    cout << "2. GenerateGradient takes " << time_1 - time_0 << " milliseconds." << endl;
+//    time_1 = clock();
+//    cout << "2. GenerateGradient takes " << time_1 - time_0 << " milliseconds." << endl;
 
     Mat imageGradient;
-    time_0 = clock();
+//    time_0 = clock();
     CombineGradient(imageGradientX, imageGradientY, imageGradient);   //计算X、Y方向梯度融合幅值
-    time_1 = clock();
-    cout << "3. CombineGradient takes " << time_1 - time_0 << " milliseconds." << endl;
+//    time_1 = clock();
+//    cout << "3. CombineGradient takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Detecting
     Mat imageNMS;
-    time_0 = clock();
+//    time_0 = clock();
     NMS(imageGradient, imageNMS, pointDirection);  //局部非极大值抑制
-    time_1 = clock();
-    cout << "4. NMS takes " << time_1 - time_0 << " milliseconds." << endl;
+//    time_1 = clock();
+//    cout << "4. NMS takes " << time_1 - time_0 << " milliseconds." << endl;
 
     Mat imageLowThreshold;
     Mat imageHighThreshold;
-    time_0 = clock();
+//    time_0 = clock();
     SplitWithThreshold(imageNMS, imageLowThreshold, imageHighThreshold, 70, 120);        //双阈值处理
-    time_1 = clock();
-    cout << "5. SplitWithThreshold takes " << time_1 - time_0 << " milliseconds." << endl;
+//    time_1 = clock();
+//    cout << "5. SplitWithThreshold takes " << time_1 - time_0 << " milliseconds." << endl;
 
     Mat imageCandy;
-    time_0 = clock();
+//    time_0 = clock();
     LinkEdge(imageCandy, imageLowThreshold, imageHighThreshold);
     time_1 = clock();
     cout << "6. DoubleThresholdLink takes " << time_1 - time_0 << " milliseconds." << endl;
@@ -68,23 +68,23 @@ Mat Candy(const Mat &frame) {
 }
 
 void GenerateGradient(const Mat &imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDirection) {
-    int time_0;
-    int time_1;
-    time_0 = clock();
+//    int time_0;
+//    int time_1;
+//    time_0 = clock();
     pointDirection = new double[(imageSource.rows - 1) * (imageSource.cols - 1)];
 //    for (int i = 0; i < (imageSource.rows - 1) * (imageSource.cols - 1); i++) {
 //        pointDirection[i] = 0;
 //    }
     imageSobelX = Mat::zeros(imageSource.size(), CV_32SC1);
     imageSobelY = Mat::zeros(imageSource.size(), CV_32SC1);
-    time_1 = clock();
-    cout << "2. Initializing takes " << time_1 - time_0 << " milliseconds." << endl;
+//    time_1 = clock();
+//    cout << "2. Initializing takes " << time_1 - time_0 << " milliseconds." << endl;
 
     int step = imageSource.step;
     int stepXY = imageSobelX.step;
     int rowCount = imageSource.rows;
     int columnCount = imageSource.cols;
-    time_0 = clock();
+//    time_0 = clock();
     for (int i = 1; i < (rowCount - 1); i++) {
         const uchar *pixelsPreviousRow = imageSource.ptr<uchar>(i - 1);
         const uchar *pixelsThisRow = imageSource.ptr<uchar>(i);
@@ -106,8 +106,8 @@ void GenerateGradient(const Mat &imageSource, Mat &imageSobelX, Mat &imageSobelY
             }
         }
     }
-    time_1 = clock();
-    cout << "2. Calculating takes " << time_1 - time_0 << " milliseconds." << endl;
+//    time_1 = clock();
+//    cout << "2. Calculating takes " << time_1 - time_0 << " milliseconds." << endl;
     convertScaleAbs(imageSobelX, imageSobelX);
     convertScaleAbs(imageSobelY, imageSobelY);
 }
