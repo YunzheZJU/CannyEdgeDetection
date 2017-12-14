@@ -72,8 +72,8 @@ Mat Candy(const Mat &frame, int lowThreshold, int highThreshold, int kernelSize 
 //    time_0 = clock();
     LinkEdge(imageCandy, imageLowThreshold, imageHighThreshold);
     time_1 = clock();
-//    cout << "6. DoubleThresholdLink takes " << time_1 - time_0 << " milliseconds." << endl;
-    cout << "Candy takes " << time_1 - time_0 << " milliseconds." << endl;
+//    cout << "6. LinkEdge takes " << time_1 - time_0 << " milliseconds." << endl;
+    cout << "Candy takes " << time_1 - time_0 << " milliseconds altogether." << endl;
 //    Done
 //    imshow("Original", frame);
 //    imshow("Gaussian Blur", imageGaussion);
