@@ -1,26 +1,32 @@
 #include "head.h"
 #include <ctime>
 
+Mat src = Mat::zeros(200, 200, CV_8UC1);
+int lowThreshold = 70;
+int highThreshold = 20;
+
 int main() {
-    VideoCapture capture(0);
+//    VideoCapture capture(0);
 //    while (true) {
-        Mat frame;
-        cout << getBuildInformation() << endl;
-        capture.read(frame);
-        imshow("CandyO", frame);
-        Mat result = Candy(frame);
-        imshow("Candy", result);
+//        Mat frame;
+//        cout << getBuildInformation() << endl;
+//        capture.read(frame);
+//        imshow("CandyO", frame);
+//        Mat result = Candy(frame);
+//        imshow("Candy", result);
 //        if (waitKey(300) >= 0) {
 //            break;
 //        };
 //    }
-//    Mat src = imread("lena.png");
-//    imshow("My Candy Detection", result);
-    waitKey();
+    src = imread("lena.png");
+    namedWindow(WINDOW_NAME);
+    createTrackbar("lowThreshold", WINDOW_NAME, &lowThreshold, 100, onParaChange);
+    createTrackbar("highThreshold", WINDOW_NAME, &highThreshold, 100, onParaChange);
+    waitKey(0);
     return 0;
 }
 
-Mat Candy(const Mat &frame) {
+Mat Candy(const Mat &frame, int lowThreshold, int highThreshold, int kernelSize = 3) {
     int time_0;
     int time_1;
 //    Normalizing
@@ -29,7 +35,7 @@ Mat Candy(const Mat &frame) {
 //    Filtering
     time_0 = clock();
     Mat imageGaussion;
-    GaussianBlur(imageGray, imageGaussion, Size(3, 3), 0, 0);
+    GaussianBlur(imageGray, imageGaussion, Size(kernelSize, kernelSize), 0, 0);
 //    time_1 = clock();
 //    cout << "1. Filtering takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Enhancing
@@ -56,7 +62,7 @@ Mat Candy(const Mat &frame) {
     Mat imageLowThreshold;
     Mat imageHighThreshold;
 //    time_0 = clock();
-    SplitWithThreshold(imageNMS, imageLowThreshold, imageHighThreshold, 70, 120);        //双阈值处理
+    SplitWithThreshold(imageNMS, imageLowThreshold, imageHighThreshold, lowThreshold, highThreshold);        //双阈值处理
 //    time_1 = clock();
 //    cout << "5. SplitWithThreshold takes " << time_1 - time_0 << " milliseconds." << endl;
 
@@ -295,4 +301,9 @@ GoAhead(int i, int j, uchar *pixelsPreviousRow, uchar *pixelsThisRow, uchar *pix
             pixelsNextRow[j + 1] = 255;
         }
     }
+}
+
+void onParaChange(int, void *) {
+    Mat result = Candy(src, lowThreshold, highThreshold + 100);
+    imshow(WINDOW_NAME, result);
 }

@@ -11,7 +11,9 @@
 using namespace cv;
 using namespace std;
 
-Mat Candy(const Mat &frame);
+#define WINDOW_NAME "My Candy Detection"
+
+Mat Candy(const Mat &frame, int lowThreshold, int highThreshold, int kernelSize);
 
 void GenerateGradient(const Mat &imageSource, Mat &imageSobelX, Mat &imageSobelY, double *&pointDirection);
 
@@ -26,5 +28,7 @@ void LinkEdge(Mat &imageOutput, const Mat &lowThresImage, const Mat &highThresIm
 void
 GoAhead(int i, int j, uchar *pixelsPreviousRow, uchar *pixelsThisRow, uchar *pixelsNextRow, const Mat &lowThresImage,
         Mat &imageOutput);
+
+void onParaChange(int, void *);
 
 #endif //OPENCV_A1_HEAD_H
