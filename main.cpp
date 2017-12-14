@@ -1,29 +1,37 @@
 #include "head.h"
-#include <ctime>
 
-Mat src = Mat::zeros(200, 200, CV_8UC1);
+Mat imageOriginal = imread("0.png");
+Mat imageGray;
+Mat imageGaussion;
+Mat imageGradientY;
+Mat imageGradientX;
+Mat imageGradient;
+Mat imageNMS;
+Mat imageLowThreshold;
+Mat imageHighThreshold;
+Mat imageCandy;
+Mat imageResult;
 int imageNum = 0;
 int lowThreshold = 70;
 int highThreshold = 20;
+int saveImages = 0;
 
 int main() {
 //    VideoCapture capture(0);
 //    while (true) {
-//        Mat frame;
-//        cout << getBuildInformation() << endl;
-//        capture.read(frame);
-//        imshow("CandyO", frame);
-//        Mat result = Candy(frame);
-//        imshow("Candy", result);
-//        if (waitKey(300) >= 0) {
+//        capture >> frame;
+//        imageResult = Candy(frame);
+//        imshow("Candy", imageResult);
+//        if (waitKey(30) >= 0) {
 //            break;
 //        };
 //    }
     namedWindow(WINDOW_NAME);
-    createTrackbar("Choose Image", WINDOW_NAME, &imageNum, 2, onParaChange);
-    createTrackbar("Low Threshold", WINDOW_NAME, &lowThreshold, 100, onParaChange);
-    createTrackbar("High Threshold", WINDOW_NAME, &highThreshold, 100, onParaChange);
-    onParaChange(0, 0);
+    createTrackbar("Image", WINDOW_NAME, &imageNum, 2, onImageChange);
+    createTrackbar("Low Thres", WINDOW_NAME, &lowThreshold, 100, onParaChange);
+    createTrackbar("High Thres", WINDOW_NAME, &highThreshold, 100, onParaChange);
+    createTrackbar("Save?", WINDOW_NAME, &saveImages, 1, onSaveImage);
+    onParaChange(0, nullptr);
     waitKey(0);
     return 0;
 }
@@ -31,48 +39,41 @@ int main() {
 Mat Candy(const Mat &frame, int lowThreshold, int highThreshold, int kernelSize = 3) {
     int time_0;
     int time_1;
+    time_0 = clock();
 //    Normalizing
-    Mat imageGray;
     cvtColor(frame, imageGray, CV_BGR2GRAY);
 //    Filtering
-    time_0 = clock();
-    Mat imageGaussion;
+//    time_0 = clock();
     GaussianBlur(imageGray, imageGaussion, Size(kernelSize, kernelSize), 0, 0);
 //    time_1 = clock();
 //    cout << "1. Filtering takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Enhancing
-    Mat imageGradientY;
-    Mat imageGradientX;
     double *pointDirection; //定义梯度方向角数组
 //    time_0 = clock();
     GenerateGradient(imageGaussion, imageGradientX, imageGradientY, pointDirection);  //计算X、Y方向梯度和方向角
 //    time_1 = clock();
 //    cout << "2. GenerateGradient takes " << time_1 - time_0 << " milliseconds." << endl;
 
-    Mat imageGradient;
 //    time_0 = clock();
     CombineGradient(imageGradientX, imageGradientY, imageGradient);   //计算X、Y方向梯度融合幅值
 //    time_1 = clock();
 //    cout << "3. CombineGradient takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Detecting
-    Mat imageNMS;
 //    time_0 = clock();
     NMS(imageGradient, imageNMS, pointDirection);  //局部非极大值抑制
 //    time_1 = clock();
 //    cout << "4. NMS takes " << time_1 - time_0 << " milliseconds." << endl;
 
-    Mat imageLowThreshold;
-    Mat imageHighThreshold;
 //    time_0 = clock();
     SplitWithThreshold(imageNMS, imageLowThreshold, imageHighThreshold, lowThreshold, highThreshold);        //双阈值处理
 //    time_1 = clock();
 //    cout << "5. SplitWithThreshold takes " << time_1 - time_0 << " milliseconds." << endl;
 
-    Mat imageCandy;
 //    time_0 = clock();
     LinkEdge(imageCandy, imageLowThreshold, imageHighThreshold);
     time_1 = clock();
-    cout << "6. DoubleThresholdLink takes " << time_1 - time_0 << " milliseconds." << endl;
+//    cout << "6. DoubleThresholdLink takes " << time_1 - time_0 << " milliseconds." << endl;
+    cout << "Candy takes " << time_1 - time_0 << " milliseconds." << endl;
 //    Done
 //    imshow("Original", frame);
 //    imshow("Gaussian Blur", imageGaussion);
@@ -82,7 +83,6 @@ Mat Candy(const Mat &frame, int lowThreshold, int highThreshold, int kernelSize 
 //    imshow("NMS Image", imageNMS);
 //    imshow("Low Threshold", imageLowThreshold);
 //    imshow("High Threshold", imageHighThreshold);
-//    imshow("Combine Low and High Threshold", imageNMS);
     return imageCandy;
 }
 
@@ -306,19 +306,26 @@ GoAhead(int i, int j, uchar *pixelsPreviousRow, uchar *pixelsThisRow, uchar *pix
 }
 
 void onParaChange(int, void *) {
-    switch(imageNum) {
-        case 0:
-            src = imread("0.png");
-            break;
-        case 1:
-            src = imread("1.jpg");
-            break;
-        case 2:
-            src = imread("2.jpg");
-            break;
-        default:
-            break;
+    saveImages = 0;
+    imageResult = Candy(imageOriginal, lowThreshold, highThreshold + 100);
+    imshow(WINDOW_NAME, imageResult);
+}
+
+void onImageChange(int, void*) {
+    string filename;
+    stringstream num;
+    num << imageNum;
+    num >> filename;
+    filename += ".png";
+    imageOriginal = imread(filename);
+    onParaChange(0, nullptr);
+}
+
+void onSaveImage(int, void*) {
+    if (saveImages == 1) {
+        imwrite("0_Gradient.png", imageGradient);
+        imwrite("1_NMS.png", imageNMS);
+        imwrite("2_Result.png", imageResult);
+        saveImages = 0;
     }
-    Mat result = Candy(src, lowThreshold, highThreshold + 100);
-    imshow(WINDOW_NAME, result);
 }

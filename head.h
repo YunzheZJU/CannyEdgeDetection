@@ -6,6 +6,9 @@
 #define OPENCV_A1_HEAD_H
 
 #include <iostream>
+#include <ctime>
+#include <string>
+#include <sstream>
 #include <opencv2/opencv.hpp>
 
 using namespace cv;
@@ -30,5 +33,9 @@ GoAhead(int i, int j, uchar *pixelsPreviousRow, uchar *pixelsThisRow, uchar *pix
         Mat &imageOutput);
 
 void onParaChange(int, void *);
+
+void onImageChange(int, void*);
+
+void onSaveImage(int, void*);
 
 #endif //OPENCV_A1_HEAD_H
