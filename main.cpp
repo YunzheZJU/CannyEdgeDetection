@@ -2,6 +2,7 @@
 #include <ctime>
 
 Mat src = Mat::zeros(200, 200, CV_8UC1);
+int imageNum = 0;
 int lowThreshold = 70;
 int highThreshold = 20;
 
@@ -18,10 +19,11 @@ int main() {
 //            break;
 //        };
 //    }
-    src = imread("lena.png");
     namedWindow(WINDOW_NAME);
-    createTrackbar("lowThreshold", WINDOW_NAME, &lowThreshold, 100, onParaChange);
-    createTrackbar("highThreshold", WINDOW_NAME, &highThreshold, 100, onParaChange);
+    createTrackbar("Choose Image", WINDOW_NAME, &imageNum, 2, onParaChange);
+    createTrackbar("Low Threshold", WINDOW_NAME, &lowThreshold, 100, onParaChange);
+    createTrackbar("High Threshold", WINDOW_NAME, &highThreshold, 100, onParaChange);
+    onParaChange(0, 0);
     waitKey(0);
     return 0;
 }
@@ -304,6 +306,19 @@ GoAhead(int i, int j, uchar *pixelsPreviousRow, uchar *pixelsThisRow, uchar *pix
 }
 
 void onParaChange(int, void *) {
+    switch(imageNum) {
+        case 0:
+            src = imread("0.png");
+            break;
+        case 1:
+            src = imread("1.jpg");
+            break;
+        case 2:
+            src = imread("2.jpg");
+            break;
+        default:
+            break;
+    }
     Mat result = Candy(src, lowThreshold, highThreshold + 100);
     imshow(WINDOW_NAME, result);
 }
